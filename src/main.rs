@@ -254,7 +254,7 @@ impl QunatumCurcuit {
     fn measure(&mut self, qubit: usize) -> u32 {
         let probs = self.measure_prob();
         let rng_uni = rand::distributions::WeightedIndex::new(probs.values()).unwrap();
-        let index = rng_uni.sample(&mut rand::thread_rng());
+        let index = rng_uni.sample(&mut Hc128Rng::from_entropy());
         let bits = probs.keys().nth(index).unwrap();
         let bit = bits.chars().nth(self.size - qubit - 1).unwrap();
         bit.to_digit(10).unwrap()
