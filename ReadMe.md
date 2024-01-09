@@ -1,6 +1,6 @@
 # Quantum Circuit Simulator in Rust
 
-A quantum circuit simulator in Rust. It uses a custom yet simple language called Quanta.
+A quantum circuit simulator in Rust. It executes instructions in Quanta, a custom yet simple language created for this project.
 
 ## Features
 
@@ -19,10 +19,10 @@ A quantum circuit simulator in Rust. It uses a custom yet simple language called
 
 ## Initialization
 
-Valid Quanta programs must commence with a circuit declaration. Declare a circuit using `circuit n 01011...`, where n represents the number of qubits in the system, and 01011... is an optional bitstring to initialize the state. If the bitstring is omitted, the state will default to |0>. For example:
+Valid Quanta programs must commence with a circuit declaration. Declare a circuit using `circuit n 01011...`, where _n_ represents the number of qubits in the system, and `01011...` is an optional bitstring to initialize the state. If the bitstring is omitted, the state will default to |0>. For example:
 
 ```
-; Create a circuit with 2 quibits, in the state |01>
+; Create a circuit with 2 qubits, in the state |01>
 circuit 2 01
 ```
 
