@@ -421,8 +421,6 @@ impl<'a> QuantaParser<'a> {
                 }
 
                 bitstring = Some(bitstring_chars.iter().collect());
-            } else {
-                return Err(ParseError::InvalidToken(c.to_string()));
             }
         }
 
