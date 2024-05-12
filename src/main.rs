@@ -122,8 +122,91 @@ impl QunatumCurcuit {
         self.apply_gate(operator, x);
     }
 
+    /// T gate
+    pub fn t(&mut self, x: usize) {
+        let operator = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex::new(1.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, E.powf(std::f64::consts::PI / 4.0)),
+            ],
+        )
+        .expect("Failed to create T gate");
+
+        self.apply_gate(operator, x);
+    }
+
+    /// T inverse gate
+    /// T inverse is the same as T but with a negative exponent
+    /// T inverse is also known as T dagger
+    pub fn t_inverse(&mut self, x: usize) {
+        let operator = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex::new(1.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, E.powf(-std::f64::consts::PI / 4.0)),
+            ],
+        )
+        .expect("Failed to create T inverse gate");
+
+        self.apply_gate(operator, x);
+    }
+
+    /// CCX / Toffoli gate with three given 0-based qubits: control1, control2, and target
+    pub fn toffoli(&mut self, control1: usize, control2: usize, target: usize) {
+        // Apply the Hadamard gate to the target qubit
+        self.hadamard(target);
+
+        // Apply the CNOT gate controlled by control2 on the target qubit
+        self.cnot(control2, target);
+
+        // Apply the T gate to the target qubit
+        self.t_inverse(target);
+
+        // Apply the CNOT gate controlled by control1 on the target qubit
+        self.cnot(control1, target);
+
+        // Apply the T gate to the target qubit
+        self.t(target);
+
+        // Apply the CNOT gate controlled by control2 on the target qubit
+        self.cnot(control2, target);
+
+        // Apply the T-inverse gate to the target qubit
+        self.t_inverse(target);
+
+        // Apply the CNOT gate controlled by control1 on the target qubit
+        self.cnot(control1, target);
+
+        // Apply the T gate to the control2 qubit
+        self.t(control2);
+
+        // Apply the T gate to the target qubit
+        self.t(target);
+
+        // Apply the CNOT gate controlled by control1 on the control2 qubit
+        self.cnot(control1, control2);
+
+        // Apply the Hadamard gate to the target qubit
+        self.hadamard(target);
+
+        // Apply the T gate to the control1 qubit
+        self.t(control1);
+
+        // Apply the T gate to the control2 qubit
+        self.t_inverse(control2);
+
+        // Apply the CNOT gate controlled by control1 on the control2 qubit
+        self.cnot(control1, control2);
+    }
+
     /// CX / CNOT gate with a given 0-based control and target qubit
     pub fn cnot(&mut self, control: usize, target: usize) {
+        // Define the necessary matrices for the CNOT gate
         let braket0 = Array2::from_shape_vec(
             (2, 2),
             vec![
@@ -190,13 +273,14 @@ impl QunatumCurcuit {
     }
 
     pub fn rx(&mut self, x: usize, theta: f64) {
+        let theta = theta / 2.0;
         let operator = Array2::from_shape_vec(
             (2, 2),
             vec![
-                Complex::new(theta.cos() / 2.0, 0.0),
-                Complex::new(0.0, -1.0f64 * theta.sin() / 2.0),
-                Complex::new(0.0, -1.0f64 * theta.sin() / 2.0),
-                Complex::new(theta.cos() / 2.0, 0.0),
+                Complex::new(theta.cos(), 0.0),
+                Complex::new(0.0, -1.0f64 * theta.sin()),
+                Complex::new(0.0, -1.0f64 * theta.sin()),
+                Complex::new(theta.cos(), 0.0),
             ],
         )
         .expect("Failed to create Rx gate");
@@ -205,13 +289,14 @@ impl QunatumCurcuit {
     }
 
     pub fn ry(&mut self, x: usize, theta: f64) {
+        let theta = theta / 2.0;
         let operator = Array2::from_shape_vec(
             (2, 2),
             vec![
-                Complex::new(theta.cos() / 2.0, 0.0),
-                Complex::new(-theta.sin() / 2.0, 0.0),
-                Complex::new(-theta.sin() / 2.0, 0.0),
-                Complex::new(theta.cos() / 2.0, 0.0),
+                Complex::new(theta.cos(), 0.0),
+                Complex::new(-theta.sin(), 0.0),
+                Complex::new(-theta.sin(), 0.0),
+                Complex::new(theta.cos(), 0.0),
             ],
         )
         .expect("Failed to create Ry gate");
@@ -251,13 +336,39 @@ impl QunatumCurcuit {
         }
     }
 
+    /// prep_z gate
+    /// By default, all qubits are initialized in the ∣0⟩∣0⟩ state. With the prep_z instruction, qubits will be explicitly initialized in the ∣0⟩∣0⟩ state of the z-basis, i.e. in the same state as the default.
+// State initialization can be done at the beginning of an algorithm, but it can also be done during an algorithm (re-initialization). Be aware that re-initialization of a qubit will also reset the binary register entry for that qubit to zero.
+    pub fn prep_z(&mut self, x: usize) {
+        let operator = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex::new(1.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, 0.0),
+            ],
+        )
+        .expect("Failed to create Prep Z gate");
+
+        self.apply_gate(operator, x);
+    }
+
     fn measure(&mut self, qubit: usize) -> u32 {
         let probs = self.measure_prob();
-        let rng_uni = rand::distributions::WeightedIndex::new(probs.values()).unwrap();
+        let total_prob: f64 = probs.values().sum();
+        if total_prob == 0.0 {
+            panic!("Total probability is 0.0, cannot measure");
+        }
+        let rng_uni = rand::distributions::WeightedIndex::new(probs.values())
+            .expect("Failed to create weighted index");
         let index = rng_uni.sample(&mut Hc128Rng::from_entropy());
-        let bits = probs.keys().nth(index).unwrap();
-        let bit = bits.chars().nth(self.size - qubit - 1).unwrap();
-        bit.to_digit(10).unwrap()
+        let bits = probs.keys().nth(index).expect("Failed to get bits");
+        let bit = bits
+            .chars()
+            .nth(self.size - qubit - 1)
+            .expect("Failed to get bit");
+        bit.to_digit(10).expect("Failed to convert bit to digit")
     }
 
     /// Measures the theoretical probability of each state
@@ -270,7 +381,7 @@ impl QunatumCurcuit {
             .map(|i| {
                 let bits = format!("{:0width$b}", i, width = self.size);
                 let index = usize::from_str_radix(&bits, 2).unwrap();
-                (bits, self.state[index].re.powi(2))
+                (bits, self.state[index].norm_sqr())
             })
             .collect()
     }
@@ -311,15 +422,18 @@ impl QunatumCurcuit {
         for (i, coef) in self.state.iter().enumerate() {
             s.push_str(&format!("|{:0width$b}⟩: {} \n", i, coef, width = width));
         }
-        println!("Initial State:\n{}", s);
+        println!("State:\n{}", s);
     }
 
-    fn print_state_at_gate(&self, gate: &str) {
+    fn print_state_at(&self, gate: &str) {
         let mut s: String = "".to_owned();
 
         let width = (self.state.len() as f64).log2() as usize;
 
         for (i, coef) in self.state.iter().enumerate() {
+            if i % width == 0 && i != 0 {
+                s.push_str("\n");
+            }
             s.push_str(&format!("|{:0width$b}⟩: {} \n", i, coef, width = width));
         }
         println!("State at gate '{}': \n{}", gate, s);
@@ -328,7 +442,7 @@ impl QunatumCurcuit {
 
 #[derive(Debug, PartialEq)]
 enum Token {
-    Circuit(usize, Option<String>),
+    Circuit(f64, Option<String>),
     Comment(String),
     Gate(String, Vec<usize>),
 }
@@ -367,14 +481,37 @@ impl<'a> QuantaParser<'a> {
         }
     }
 
-    fn parse_number(&mut self) -> Result<usize, ParseError> {
+    fn parse_number(&mut self) -> Result<f64, ParseError> {
         let mut num_str = String::new();
+        let mut is_float = false;
+        let mut is_negative = false;
 
         self.skip_whitespace();
 
         while let Some(c) = self.current_char {
             if c.is_digit(10) {
                 num_str.push(c);
+                self.advance();
+            } else if c == '.' {
+                if is_float {
+                    println!("Invalid token at: parse_number (multiple dots)");
+                    return Err(ParseError::InvalidToken(num_str));
+                } else {
+                    is_float = true;
+                    num_str.push(c);
+                    self.advance();
+                }
+            } else if c == '-' {
+                if is_negative {
+                    println!("Invalid token at: parse_number (multiple negatives)");
+                    return Err(ParseError::InvalidToken(num_str));
+                } else {
+                    is_negative = true;
+                    num_str.push(c);
+                    self.advance();
+                }
+            } else if c == '_' {
+                // Allow underscores in numbers
                 self.advance();
             } else {
                 break;
@@ -383,10 +520,16 @@ impl<'a> QuantaParser<'a> {
 
         if num_str.is_empty() {
             Err(ParseError::MissingParameter)
+        } else if is_float {
+            num_str
+                .parse::<f64>()
+                .map_err(|_| ParseError::InvalidToken(num_str))
+                .map(|f| f)
         } else {
             num_str
                 .parse::<usize>()
                 .map_err(|_| ParseError::InvalidToken(num_str))
+                .map(|n| n as f64)
         }
     }
 
@@ -443,20 +586,25 @@ impl<'a> QuantaParser<'a> {
     }
 
     fn parse_gate(&mut self) -> Result<Token, ParseError> {
+        self.skip_whitespace();
+
         let gate_name = self.parse_identifier()?;
         let mut qubits = Vec::new();
 
-        self.skip_whitespace();
+        println!("Current char 1: {:?}", self.current_char);
+
+        println!("Current char 2: {:?}", self.current_char);
 
         while let Some(c) = self.current_char {
-            if c.is_digit(10) {
-                let qubit = self.parse_number()?;
+            if c.is_digit(10) || c == '-' {
+                let qubit = self.parse_number()? as usize;
                 qubits.push(qubit);
-            } else if c == '\n' {
+            } else if c == '\n' || c == '\r' {
                 break;
             } else if c.is_whitespace() {
                 self.skip_whitespace();
             } else {
+                println!("Invalid token at: parse_gate");
                 return Err(ParseError::InvalidToken(c.to_string()));
             }
         }
@@ -479,8 +627,10 @@ impl<'a> QuantaParser<'a> {
         }
 
         if identifier.is_empty() {
+            println!("Invalid token at: parse_identifier");
             Err(ParseError::InvalidToken("Empty identifier".to_string()))
         } else {
+            println!("Identifier: {}", identifier);
             Ok(identifier)
         }
     }
@@ -558,7 +708,7 @@ fn main() -> Result<(), ParseError> {
     for token in tokens {
         match token {
             Token::Circuit(size, bitstring) => {
-                circuit = QunatumCurcuit::new(size);
+                circuit = QunatumCurcuit::new(size as usize);
                 // Apply bitstring if provided
                 if let Some(bitstring) = bitstring {
                     for (i, c) in bitstring.chars().enumerate() {
@@ -575,39 +725,63 @@ fn main() -> Result<(), ParseError> {
                 // TODO: Add more gates
                 "h" => {
                     circuit.hadamard(qubits[0]);
-                    circuit.print_state_at_gate("Hadamard");
+                    circuit.print_state_at("Hadamard");
                 }
                 "cnot" => {
                     circuit.cnot(qubits[0], qubits[1]);
-                    circuit.print_state_at_gate("CNOT");
+                    circuit.print_state_at("CNOT");
                 }
                 "x" => {
                     circuit.x(qubits[0]);
-                    circuit.print_state_at_gate("X");
+                    circuit.print_state_at("X");
                 }
                 "z" => {
                     circuit.z(qubits[0]);
-                    circuit.print_state_at_gate("Z");
+                    circuit.print_state_at("Z");
                 }
                 "y" => {
                     circuit.y(qubits[0]);
-                    circuit.print_state_at_gate("Y");
+                    circuit.print_state_at("Y");
                 }
                 "swap" => {
                     circuit.swap(qubits[0], qubits[1]);
-                    circuit.print_state_at_gate("SWAP");
+                    circuit.print_state_at("SWAP");
                 }
                 "identity" | "id" => {
                     circuit.identity(qubits[0]);
-                    circuit.print_state_at_gate("Identity");
+                    circuit.print_state_at("Identity");
                 }
                 "fourier" | "qft" => {
                     circuit.qft();
-                    circuit.print_state_at_gate("Qauntum Fourier Transform");
+                    circuit.print_state_at("Qauntum Fourier Transform");
+                }
+                "rx" => {
+                    circuit.rx(qubits[0], qubits[1] as f64);
+                    circuit.print_state_at("Rx");
+                }
+                "ry" => {
+                    circuit.ry(qubits[0], qubits[1] as f64);
+                    circuit.print_state_at("Ry");
+                }
+                // "rz" => {
+                //     circuit.rz(qubits[0], qubits[1] as f64);
+                //     circuit.print_state_at("Rz");
+                // }
+                "toffoli" => {
+                    circuit.toffoli(qubits[0], qubits[1], qubits[2]);
+                    circuit.print_state_at("Toffoli");
+                }
+                "display" => {
+                    // display qubit state from circuit.state in a nice way
+                    circuit.print_state();
                 }
                 "measure" => {
                     let measure = circuit.measure(qubits[0]);
                     println!("Measured Qubit '{}': {}", qubits[0], measure);
+                }
+                "prob" => {
+                    let measure_prob = circuit.measure_real_prob(qubits[0]);
+                    println!("Measured Probability: {:#?}", measure_prob);
                 }
                 _ => panic!("Unknown gate `{}`", gate_name),
             },

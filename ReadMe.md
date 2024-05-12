@@ -11,6 +11,9 @@ A quantum circuit simulator in Rust. It executes instructions in Quanta, a custo
   - Hadamard
   - CNOT
   - Identity
+  - Rotation about x-axis (Rx)
+  - Rotation about y-axis (Ry)
+  - Rotation about z-axis (Rz)
   - Swap
   - Quantum Fourier Transform
 - Measuring and gate execution circuits
@@ -43,6 +46,9 @@ The currently supported gates are as follows:
 | `x`                | 1          | Pauli X gate (Not gate)         |
 | `y`                | 1          | Pauli Y gate                    |
 | `z`                | 1          | Pauli Z gate                    |
+| `rx`               | 2          | Rotation about x-axis           |
+| `ry`               | 2          | Rotation about y-axis           |
+| `rz`               | 2          | Rotation about z-axis           |
 | `cnot`             | 2          | Conditional not gate            |
 | `swap`             | 2          | Swap gate                       |
 | `fourier` or `qft` | 0          | Qauntum Fourier Transform       |
